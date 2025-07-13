@@ -45,7 +45,7 @@ class AskDanApp:
                 self.image_path = self.save_temp_image()
                 with st.spinner("Analyzing with AI..."):
                     result = self.caption_image()
-                os.remove(self.image_path)
+                # os.remove(self.image_path)
                 st.markdown("### Dan's Insight: ")
                 st.text(result)
 
@@ -65,7 +65,7 @@ class AskDanApp:
 
         for i, meal in enumerate(st.session_state.meals):
             st.subheader(f"🍱 Meal #{i+1}")
-            st.image(meal["image"], use_column_width=True)
+            st.image(meal["image"])
             st.markdown(f"**Description:** {meal['description']}")
             st.markdown("**Nutrition Insight:**")
             st.text(meal["nutrition"])
