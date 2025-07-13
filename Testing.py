@@ -1,18 +1,19 @@
 import pandas as pd
 from difflib import get_close_matches
 from transformers import AutoTokenizer, AutoModel
-import torch
 import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
+import subprocess
 
 
+DB_dir = "FoodData_DB"
 
 # Load CSV files
-food_df = pd.read_csv(r"C:\Users\danar\Downloads\FoodData_Central_foundation_food_csv_2025-04-24\FoodData_Central_foundation_food_csv_2025-04-24\food.csv")
-foundation_food_df = pd.read_csv(r"C:\Users\danar\Downloads\FoodData_Central_foundation_food_csv_2025-04-24\FoodData_Central_foundation_food_csv_2025-04-24\foundation_food.csv")
-food_nutrient_df = pd.read_csv(r"C:\Users\danar\Downloads\FoodData_Central_foundation_food_csv_2025-04-24\FoodData_Central_foundation_food_csv_2025-04-24\food_nutrient.csv")
-nutrient_df = pd.read_csv(r"C:\Users\danar\Downloads\FoodData_Central_foundation_food_csv_2025-04-24\FoodData_Central_foundation_food_csv_2025-04-24\nutrient.csv")
+food_df = pd.read_csv(r"%s\food.csv" % DB_dir)
+foundation_food_df = pd.read_csv(r"%s\foundation_food.csv" % DB_dir)
+food_nutrient_df = pd.read_csv(r"%s\food_nutrient.csv" % DB_dir)
+nutrient_df = pd.read_csv(r"%s\nutrient.csv" % DB_dir)
 
 # Merge food and foundation_food to get descriptions with fdc_ids
 foundation_foods = foundation_food_df.merge(food_df, on="fdc_id")
@@ -71,9 +72,19 @@ for nutrient, total in sorted(nutrient_totals.items()):
     print(f"{nutrient}: {round(total, 2)}")
 
 
+prompt = "Why is the sky blue"
 
-ollama run gemma
 
+result = subprocess.run(
+                ["ollama", "run", "gemma3:4b", prompt],
+                capture_output=True,
+                text=True,
+                encoding='utf-8'
+            )
+
+print(result.stdout.strip())
+
+query_embedding = result.stdout.strip()
 
  # Load model
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -95,7 +106,9 @@ collection.add(
 
 
 query = "Which foods are high in calcium?"
-query_embedding = get_embedding(query)
+
+# TODO replace get embedding with call to ollama using subprocess with above query
+#query_embedding = get_embedding(query)
 
 results = collection.query(
     query_embeddings=[query_embedding],
