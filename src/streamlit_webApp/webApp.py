@@ -58,14 +58,14 @@ class AskDanApp:
                     "id": str(uuid.uuid4()),
                     "image": self.image_bytes,
                     "description": self.description,
-                    "nutrition": result
+                    # "nutrition": result
                 })
 
     def run_dashboard(self):
         st.title("📋 Meal Dashboard")
 
         if not st.session_state.meals:
-            st.info("No meals submitted yet.")
+            st.info("No meals submitted to the dashboard yet.")
             return
 
         for i, meal in enumerate(st.session_state.meals):
@@ -83,8 +83,8 @@ class AskDanApp:
                 #Right: description and nutrition
                 with cols[1]:
                     st.markdown(f"**Your Description:** {meal['description']}")
-                    st.markdown("**Dan's Nutrition Insight:**")
-                    st.text(meal["nutrition"])
+                    # st.markdown("**Dan's Nutrition Insight:**")
+                    # st.text(meal["nutrition"])
 
         st.markdown("---")
         if st.button("Clear All Meals"):
