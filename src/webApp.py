@@ -10,6 +10,16 @@ class AskDanApp:
         self.image_path = ""
     
     def run(self):
+        with st.sidebar.expander("ℹ️ About Ask DAN"):
+            st.markdown("""
+            **Ask DAN** (Daily Assistant for Nutrition) is your smart food companion 🥦🍳  
+            Upload your meal, describe it briefly, and let DAN break down the calories and nutrients.
+            Never guessing your calorie intake again!
+
+            _Built by a passionate team who believe in health, data, and helping people eat smarter._  
+            Eat well, live better.
+            """)
+
         st.title("Ask DAN: Your Daily Assistant for Nutrition")
         st.markdown(
             "Take a picture of your food and write a short description "
@@ -25,17 +35,19 @@ class AskDanApp:
         if self.image_file is not None:
             image = Image.open(self.image_file)
             st.image(image, caption="Uploaded Image")
-        
-        if st.button("Submit"):
-            if not self.image_file or not self.description:
-                st.warning("Please upload an image and enter a description before submitting.")
-            else:
-                self.image_path = self.save_temp_image()
-                with st.spinner("Analyzing with AI..."):
-                    result = self.caption_image()
-                os.remove(self.image_path)
-                st.markdown("### Dan's Insight: ")
-                st.text(result)
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:       
+            if st.button("Submit"):
+                if not self.image_file or not self.description:
+                    st.warning("Please upload an image and enter a description before submitting.")
+                else:
+                    self.image_path = self.save_temp_image()
+                    with st.spinner("Analyzing with AI..."):
+                        result = self.caption_image()
+                    os.remove(self.image_path)
+                    st.markdown("### Dan's Insight: ")
+                    st.text(result)
     
     def save_temp_image(self):
         path = f"temp_{self.image_file.name}"
@@ -51,7 +63,8 @@ class AskDanApp:
         prompt = f"Analyze this image of a dish and list each visible ingredient. \
                 For each ingredient, estimate the percentage by weight it contributes to the overall dish. \
                 Also estimate the total weight of the dish in grams. \
-                Present your answer as a list with approximate percentages summing to 100%. \
+                Present your answer by first describing what you see in the image, \
+                and then show a list with approximate weight percentages summing to 100%. \
                 Here is also a description of the image: {self.description}. \
                 {self.image_path}"
             
