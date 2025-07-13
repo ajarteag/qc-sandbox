@@ -1,7 +1,8 @@
 import streamlit as st
 import subprocess
 import os
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+import io
 import uuid
 
 class AskDanApp:
@@ -42,7 +43,8 @@ class AskDanApp:
             if not self.image_file or not self.description:
                 st.warning("Please upload an image and enter a description before submitting.")
             else:
-                self.image_path = self.save_temp_image()
+                # self.image_path = self.save_temp_image()
+                image_bytes = self.image_file.read()
                 with st.spinner("Analyzing with AI..."):
                     result = self.caption_image()
                 # os.remove(self.image_path)
@@ -52,7 +54,7 @@ class AskDanApp:
                 # Save to dashboard
                 st.session_state.meals.append({
                     "id": str(uuid.uuid4()),
-                    "image": self.image_path,
+                    "image": image_bytes,
                     "description": self.description,
                     "nutrition": result
                 })
@@ -65,7 +67,15 @@ class AskDanApp:
 
         for i, meal in enumerate(st.session_state.meals):
             st.subheader(f"🍱 Meal #{i+1}")
-            st.image(meal["image"])
+            try:
+                if os.path.exists(meal["image"]):
+                    img = Image.open(meal["image"])
+                    st.image(img, use_column_width=True)
+                else:
+                    st.warning(f"Image not found: {meal['image']}")
+            except UnidentifiedImageError:
+                st.error(f"Unable to read image: {meal['image']}")
+
             st.markdown(f"**Description:** {meal['description']}")
             st.markdown("**Nutrition Insight:**")
             st.text(meal["nutrition"])
@@ -89,12 +99,12 @@ class AskDanApp:
     '''
     def caption_image(self):
         # Create prompt to send to Ollama
-        prompt = f"Analyze this image of a dish and list each visible ingredient. \
+        prompt = f"Analyze this image {self.image_path} of a dish and list each visible ingredient. \
                 For each ingredient, estimate the percentage by weight it contributes to the overall dish. \
                 Also estimate the total weight of the dish in grams. \
+                Present a description of what you see in the image. \
                 Present your answer as a list with approximate percentages summing to 100%. \
-                Here is also a description of the image: {self.description}. \
-                {self.image_path}"
+                Here is also a description of the image to aid with your analysis: {self.description}. "
             
         # Call ollama
         try:
