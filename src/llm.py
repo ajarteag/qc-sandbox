@@ -116,5 +116,5 @@ def llm():
     tps = np.round((args.max_tokens / elapsed),2)
     print(f"\nTokens Per Second: {tps}")
 
-# if __name__=="__main__":
-#     llm()
+if __name__=="__main__":
+    llm()
