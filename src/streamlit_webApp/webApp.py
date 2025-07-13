@@ -2,14 +2,26 @@ import streamlit as st
 import subprocess
 import os
 from PIL import Image
+import uuid
 
 class AskDanApp:
     def __init__(self):
         self.image_file = None
         self.description = ""
         self.image_path = ""
+        if "meals" not in st.session_state:
+            st.session_state.meals = []
     
     def run(self):
+        st.sidebar.title("🍽️ Navigation")
+        page = st.sidebar.radio("Go to", ["Home", "Meal Dashboard"])
+
+        if page == "Home":
+            self.run_home()
+        elif page == "Meal Dashboard":
+            self.run_dashboard()
+    
+    def run_home(self):
         st.title("Ask DAN: Your Daily Assistant for Nutrition")
         st.markdown(
             "Take a picture of your food and write a short description "
@@ -36,6 +48,35 @@ class AskDanApp:
                 os.remove(self.image_path)
                 st.markdown("### Dan's Insight: ")
                 st.text(result)
+
+                # Save to dashboard
+                st.session_state.meals.append({
+                    "id": str(uuid.uuid4()),
+                    "image": self.image_path,
+                    "description": self.description,
+                    "nutrition": result
+                })
+    def run_dashboard(self):
+        st.title("📋 Meal Dashboard")
+
+        if not st.session_state.meals:
+            st.info("No meals submitted yet.")
+            return
+
+        for i, meal in enumerate(st.session_state.meals):
+            st.subheader(f"🍱 Meal #{i+1}")
+            st.image(meal["image"], use_column_width=True)
+            st.markdown(f"**Description:** {meal['description']}")
+            st.markdown("**Nutrition Insight:**")
+            st.text(meal["nutrition"])
+            st.markdown("---")
+
+        if st.button("Clear All Meals"):
+            for meal in st.session_state.meals:
+                if os.path.exists(meal["image"]):
+                    os.remove(meal["image"])
+            st.session_state.meals.clear()
+            st.success("All meals cleared.")
     
     def save_temp_image(self):
         path = f"temp_{self.image_file.name}"
