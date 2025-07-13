@@ -6,14 +6,10 @@ import sqlite3
 db_dir = "./embedding_database/"
 
 # Load only the columns you care about
-df = pd.read_excel(
-    db_dir + "food.xlsx",
-    usecols=["ID", "name", "Food Group", "Calories", "Fat (g)", "Carbohydrate (g)"]
+df = pd.read_csv(
+    db_dir + "food.csv",
+    usecols=['ID', 'name', 'Food Group', 'Calories', 'Fat (g)', 'Protein (g)', 'Carbohydrate (g)'],
 )
-
-
-# Optional: clean up blank rows or IDs
-df = df.dropna(subset=["id", "name"])
 
 # Connect to SQLite (creates food.db if it doesn't exist)
 conn = sqlite3.connect(db_dir + "food.db")

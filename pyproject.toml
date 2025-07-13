@@ -8,6 +8,7 @@ dependencies = [
     "notebook>=7.4.4",
     "numpy>=2.3.1",
     "onnxruntime-qnn>=1.22.0",
+    "openpyxl>=3.1.5",
     "streamlit>=1.46.1",
     "tokenizers>=0.21.2",
 ]
