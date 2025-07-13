@@ -209,3 +209,6 @@ __marimo__/
 # LLM Bin and Onnx Files
 *.bin
 *.onnx
+
+# webapp node modules
+WebApp/node_modules/**
