@@ -69,18 +69,24 @@ class AskDanApp:
             return
 
         for i, meal in enumerate(st.session_state.meals):
-            st.subheader(f"🍱 Meal #{i+1}")
-            try:
-                img = Image.open(io.BytesIO(meal["image"]))
-                st.image(img, use_column_width=True)
-            except Exception as e:
-                st.error(f"Unable to load image: {e}")
+            with st.container():
+                st.markdown("----")
+                cols = st.columns([1,2])
 
-            st.markdown(f"**Description:** {meal['description']}")
-            st.markdown("**Nutrition Insight:**")
-            st.text(meal["nutrition"])
-            st.markdown("---")
+                #Left: smaller image
+                with cols[0]:
+                    try:
+                        img = Image.open(io.BytesIO(meal["image"]))
+                        st.image(img, caption=f"Meal #{i+1}", width=200)
+                    except Exception as e:
+                        st.error(f"Unable to load image: {e}")
+                #Right: description and nutrition
+                with cols[1]:
+                    st.markdown(f"**Your Description:** {meal['description']}")
+                    st.markdown("**Dan's Nutrition Insight:**")
+                    st.text(meal["nutrition"])
 
+        st.markdown("---")
         if st.button("Clear All Meals"):
             st.session_state.meals.clear()
             st.success("All meals cleared.")
