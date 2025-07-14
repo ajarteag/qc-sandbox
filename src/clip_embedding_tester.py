@@ -28,9 +28,6 @@ torch_device = "cpu"
 
 print("Loading CLIP tokenizer...")
 
-tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
-text_encoder = CLIPTextModelWithProjection.from_pretrained("openai/clip-vit-large-patch14")
-
 text_encoder = text_encoder.to(torch_device).half()
 
 input_text = "a photo of a black cat"

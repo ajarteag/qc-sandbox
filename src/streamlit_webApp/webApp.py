@@ -5,6 +5,15 @@ from PIL import Image
 import io
 import uuid
 
+import torch
+import pandas as pd
+from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer, CLIPVisionModelWithProjection, CLIPVisionModel, AutoProcessor, logging
+import torchvision.transforms as T
+import numpy as np
+import faiss
+import sqlite3
+
+
 class AskDanApp:
     def __init__(self):
         self.image_file = None
@@ -12,6 +21,12 @@ class AskDanApp:
         self.image_bytes = None  # Store raw bytes here
         if "meals" not in st.session_state:
             st.session_state.meals = []
+
+        #backend image model setup 
+        self.image_model = CLIPVisionModelWithProjection.from_pretrained("openai/clip-vit-large-patch14")
+        self.image_model = self.image_model.to('cpu')
+        self.processor = AutoProcessor.from_pretrained("openai/clip-vit-large-patch14")
+        self.index = faiss.read_index("./embedding_database/faiss_index.faiss")
 
     def run(self):
         st.sidebar.title("🍽️ Navigation")
@@ -91,6 +106,50 @@ class AskDanApp:
             st.session_state.meals.clear()
             st.success("All meals cleared.")
 
+
+    #backend process 
+    def image_vector(self, img_path):
+        input_img = Image.open(img_path).convert("RGB")
+        image_inputs = self.processor(images=input_img, return_tensors="pt")
+        image_inputs = image_inputs.to('cpu').to(torch.HalfTensor)
+        outputs = self.image_model(**image_inputs).image_embeds.detach().numpy()
+        return outputs
+    
+
+    def get_neighbors(self, output_vector, k):
+        q = output_vector.reshape(1, -1).astype("float32")
+        q /= np.linalg.norm(q, axis=1, keepdims=True) + 1e-12
+        D, I = self.index.search(q, k)
+        return I[0]
+    
+    def get_db_data(self, neighbors):
+        conn = sqlite3.connect("./embedding_database/food.db")
+        cursor = conn.cursor()
+
+        placeholders = ','.join(['?'] * len(neighbors))
+
+        # Build and execute query
+        query = f"SELECT * FROM foods WHERE ID IN ({placeholders})"
+        cursor.execute(query, neighbors)
+
+        # Fetch all matching rows
+        rows = cursor.fetchall()
+        return rows
+
+
+    def backend(self, img_path, k=5):  #the goal is to query the database and then provide the 
+        #get the image vector 
+        output_vector = self.image_vector(img_path)
+
+        #query faiss + get vector id codes 
+        neighbors = self.get_neighbors(output_vector, k)
+
+        rows = self.get_db_data(neighbors)
+
+        return rows
+
+
+        
     def caption_image(self):
         # Save image to a temp file for analysis
         image_path = f"temp_{uuid.uuid4().hex}.jpg"
@@ -98,12 +157,16 @@ class AskDanApp:
             with open(image_path, 'wb') as f:
                 f.write(self.image_bytes)
 
+            rows = self.backend(image_path, 5)
+            print(rows)
+
             # Create prompt
             prompt = (
                 f"Analyze this image file: {image_path}. "
                 f"List all visible ingredients. Estimate the percentage by weight for each ingredient. "
                 f"Estimate total dish weight in grams. Describe what you see. Percentages should sum to ~100%. "
                 f"Here is a user-provided description: {self.description}"
+                f"Here are some context for your understanding: {rows}"
             )
 
             # Call Ollama CLI with prompt
