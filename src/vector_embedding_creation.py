@@ -1,4 +1,4 @@
-from PIL import Image
+
 import numpy as np
 import torch
 from transformers import CLIPTokenizer, CLIPTextModelWithProjection
@@ -51,12 +51,12 @@ try:
 except KeyboardInterrupt:
     print("Interrupted by user. Exiting early.")
 
-    # Convert to arrays
-    emb_array = np.stack(text_embeddings)  # shape (n, 768)
-    id_array = np.array(id_array, dtype='int64')
+# Convert to arrays
+emb_array = np.stack(text_embeddings)  # shape (n, 768)
+id_array = np.array(id_array, dtype='int64')
 
-    # Save to files
-    np.save(os.path.join(save_root, "embeddings.npy"), emb_array)
-    np.save(os.path.join(save_root, "ids.npy"), id_array)
+# Save to files
+np.save(os.path.join(save_root, "embeddings.npy"), emb_array)
+np.save(os.path.join(save_root, "ids.npy"), id_array)
 
-    print(f"Saved embeddings: {emb_array.shape}, IDs: {id_array.shape}")
+print(f"Saved embeddings: {emb_array.shape}, IDs: {id_array.shape}")
