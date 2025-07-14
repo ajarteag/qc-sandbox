@@ -10,11 +10,13 @@ from PIL import Image
 
 import torch
 #import pandas as pd
-from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer, CLIPVisionModelWithProjection, CLIPVisionModel, AutoProcessor, logging
+from transformers import CLIPVisionModelWithProjection, AutoProcessor
 
 import numpy as np
 import faiss
 import sqlite3
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # ========== USER AUTH ==========
 def connect_user_db():
@@ -101,7 +103,7 @@ class AskDanApp:
         self.image_bytes = None
 
         #backend image model setup 
-        self.image_model = CLIPVisionModelWithProjection.from_pretrained("openai/clip-vit-large-patch14").to('cpu')
+        self.image_model = CLIPVisionModelWithProjection.from_pretrained("openai/clip-vit-large-patch14")
         self.processor = AutoProcessor.from_pretrained("openai/clip-vit-large-patch14")
         self.index = faiss.read_index("./embedding_database/faiss_index.faiss")
 
@@ -149,6 +151,7 @@ class AskDanApp:
 
     #backend process 
     def image_vector(self, img_path):
+        print(f"Processing image: {img_path}")
         input_img = Image.open(img_path).convert("RGB")
         image_inputs = self.processor(images=input_img, return_tensors="pt")
         image_inputs = image_inputs.to('cpu').to(torch.HalfTensor)
@@ -157,12 +160,15 @@ class AskDanApp:
     
 
     def get_neighbors(self, output_vector, k):
+        print(f"Searching for neighbors in FAISS index with k={k}")
         q = output_vector.reshape(1, -1).astype("float32")
         q /= np.linalg.norm(q, axis=1, keepdims=True) + 1e-12
         D, I = self.index.search(q, k)
         return I[0]
     
     def get_db_data(self, neighbors):
+        print(f"Fetching data for neighbors: {neighbors}")
+        neighbors = [int(n) for n in neighbors]  # Ensure all IDs are valid integers
         conn = sqlite3.connect("./embedding_database/food.db")
         cursor = conn.cursor()
 
@@ -175,6 +181,23 @@ class AskDanApp:
         # Fetch all matching rows
         rows = cursor.fetchall()
         return rows
+    
+
+    def process_row(self, rows):
+        labeled_rows = []
+        for row in rows:
+            # Remove ID (row[0])
+            name = row[1]
+            food_group = row[2]
+            calories = f"calories (kcal per 100g): {row[3]}"
+            fat = f"fat (g): {row[4]}"
+            protein = f"protein (g): {row[5]}"
+            carbs = f"carbohydrates (g): {row[6]}"
+
+            # Join all parts with commas
+            labeled_row = ", ".join([name, food_group, calories, fat, protein, carbs])
+            labeled_rows.append(labeled_row)
+        return labeled_rows
 
 
     def backend(self, img_path, k=5):  #the goal is to query the database and then provide the 
@@ -183,7 +206,8 @@ class AskDanApp:
         #query faiss + get vector id codes 
         neighbors = self.get_neighbors(output_vector, k)
         rows = self.get_db_data(neighbors)
-        return rows
+        processed_rows = self.process_row(rows)
+        return processed_rows
     
     def caption_image(self):
         image_path = f"temp_{uuid.uuid4().hex}.jpg"
@@ -192,7 +216,7 @@ class AskDanApp:
                 f.write(self.image_bytes)
 
             rows = self.backend(image_path, 5)
-            print(rows)
+            rows = "\n".join(rows) if rows else ""
 
             prompt = (
                 f"Analyze this image file: {image_path}. "
@@ -200,6 +224,7 @@ class AskDanApp:
                 f"User description: {self.description}"
                 f"Here are some context with the top entries in the nutrition database for reference for caloric calculations: {rows}"
             )
+            print(f"Running Ollama with prompt: {prompt}")
             result = subprocess.run(["ollama", "run", "gemma3:4b", prompt],
                                     capture_output=True, text=True, encoding='utf-8')
             if result.returncode != 0:
