@@ -8,6 +8,14 @@ import uuid
 import datetime
 from PIL import Image
 
+import torch
+#import pandas as pd
+from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer, CLIPVisionModelWithProjection, CLIPVisionModel, AutoProcessor, logging
+
+import numpy as np
+import faiss
+import sqlite3
+
 # ========== USER AUTH ==========
 def connect_user_db():
     return sqlite3.connect("users.db")
@@ -92,6 +100,11 @@ class AskDanApp:
         self.description = ""
         self.image_bytes = None
 
+        #backend image model setup 
+        self.image_model = CLIPVisionModelWithProjection.from_pretrained("openai/clip-vit-large-patch14").to('cpu')
+        self.processor = AutoProcessor.from_pretrained("openai/clip-vit-large-patch14")
+        self.index = faiss.read_index("./embedding_database/faiss_index.faiss")
+
     def run(self):
         st.sidebar.title("🍽️ Navigation")
         page = st.sidebar.radio("Go to", ["Home", "Meal Dashboard"])
@@ -133,16 +146,59 @@ class AskDanApp:
                     nutrition=result
                 )
                 st.success("Meal saved!")
+
+    #backend process 
+    def image_vector(self, img_path):
+        input_img = Image.open(img_path).convert("RGB")
+        image_inputs = self.processor(images=input_img, return_tensors="pt")
+        image_inputs = image_inputs.to('cpu').to(torch.HalfTensor)
+        outputs = self.image_model(**image_inputs).image_embeds.detach().numpy()
+        return outputs
+    
+
+    def get_neighbors(self, output_vector, k):
+        q = output_vector.reshape(1, -1).astype("float32")
+        q /= np.linalg.norm(q, axis=1, keepdims=True) + 1e-12
+        D, I = self.index.search(q, k)
+        return I[0]
+    
+    def get_db_data(self, neighbors):
+        conn = sqlite3.connect("./embedding_database/food.db")
+        cursor = conn.cursor()
+
+        placeholders = ','.join(['?'] * len(neighbors))
+
+        # Build and execute query
+        query = f"SELECT * FROM foods WHERE ID IN ({placeholders})"
+        cursor.execute(query, neighbors)
+
+        # Fetch all matching rows
+        rows = cursor.fetchall()
+        return rows
+
+
+    def backend(self, img_path, k=5):  #the goal is to query the database and then provide the 
+        #get the image vector 
+        output_vector = self.image_vector(img_path)
+        #query faiss + get vector id codes 
+        neighbors = self.get_neighbors(output_vector, k)
+        rows = self.get_db_data(neighbors)
+        return rows
     
     def caption_image(self):
         image_path = f"temp_{uuid.uuid4().hex}.jpg"
         try:
             with open(image_path, 'wb') as f:
                 f.write(self.image_bytes)
+
+            rows = self.backend(image_path, 5)
+            print(rows)
+
             prompt = (
                 f"Analyze this image file: {image_path}. "
                 f"Describe what you see and estimate ingredient breakdown. "
                 f"User description: {self.description}"
+                f"Here are some context with the top entries in the nutrition database for reference for caloric calculations: {rows}"
             )
             result = subprocess.run(["ollama", "run", "gemma3:4b", prompt],
                                     capture_output=True, text=True, encoding='utf-8')

@@ -28,6 +28,9 @@ torch_device = "cpu"
 
 print("Loading CLIP tokenizer...")
 
+tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14")
+text_encoder = CLIPTextModelWithProjection.from_pretrained("openai/clip-vit-large-patch14")
+
 text_encoder = text_encoder.to(torch_device).half()
 
 input_text = "a photo of a black cat"
@@ -77,7 +80,7 @@ input_img = Image.open(image_location).convert("RGB")
 print("Loading the processor with the image inputs")
 image_inputs = processor(images=input_img, return_tensors="pt")
 
-image_inputs = image_inputs.to(torch_device).to(torch.HalfTensor)
+image_inputs = image_inputs.to(torch_device)
 
 print("Embedding image model")
 outputs = image_model(**image_inputs)
