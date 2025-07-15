@@ -1,12 +1,25 @@
 # Ask DAN Anything 
 
+Daily Assistant for Nutrition (Ask D.A.N.)
+
+
+A self-hosting nutrition tracking webapp and assistant powered by edge AI.
+
+
 This project is created for Qualcomm's ML Hackathon. Models are designed and optimized for the Snapdragon Xelite chips.
 
 1. Frontend:
 Created using streamlit and connects to the sqlite3 database for user data storage. 
 
 2. Backend: 
-Vectors are embedded in a FAISS index and uses CLIP vision model to process image data for querying. Vectors within the index is associated with an unique id to locate them within the database hosted by sqlite3 database for efficient retrieval and access. 
+Vectors are embedded in a FAISS index and uses CLIP vision model to process image data for querying. Vectors within the index is associated with an unique id to locate them within the database hosted by sqlite3 database for efficient retrieval and access.
+
+Developers Contact Info:
+- Alejandro Arteaga (ajarteag@usc.edu)
+- Ashley Fu (yue.yang.fu@vanderbilt.edu)
+- Daniel Arnold (danarnold38438@gmail.com)
+- Katarina Duric (kd374@cornell.edu)
+- Kerry Huang (yue.huang@nyu.edu)
 
 
 Deployment: 
